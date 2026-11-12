@@ -1,0 +1,1125 @@
+{
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "view-in-github",
+        "colab_type": "text"
+      },
+      "source": [
+        "<a href=\"https://colab.research.google.com/github/Danial-071/langchain-project/blob/main/LLM%20tools%20and%20Runnables\" target=\"_parent\"><img src=\"https://colab.research.google.com/assets/colab-badge.svg\" alt=\"Open In Colab\"/></a>"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "%%capture\n",
+        "%pip install pytube\n",
+        "%pip install youtube-transcript-api\n",
+        "%pip install langchain-community\n",
+        "%pip install langchain\n",
+        "%pip install langchain-openrouter\n",
+        "%pip install yt-dlp"
+      ],
+      "metadata": {
+        "id": "Wf5KrEb6vrkR"
+      },
+      "id": "Wf5KrEb6vrkR",
+      "execution_count": 2,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "import re\n",
+        "from pytube import YouTube\n",
+        "from langchain_core.tools import tool\n",
+        "from IPython.display import display, JSON\n",
+        "import yt_dlp\n",
+        "from typing import List, Dict\n",
+        "from langchain_core.messages import HumanMessage\n",
+        "from langchain_core.messages import ToolMessage\n",
+        "import json\n",
+        "from google.colab import userdata\n",
+        "from langchain_openrouter import ChatOpenRouter\n",
+        "import os\n",
+        "import requests\n",
+        "\n",
+        "# Suppress warnings\n",
+        "import warnings\n",
+        "warnings.filterwarnings(\"ignore\")\n",
+        "\n",
+        "# Suppress pytube errors\n",
+        "import logging\n",
+        "pytube_logger = logging.getLogger('pytube')\n",
+        "pytube_logger.setLevel(logging.ERROR)\n",
+        "\n",
+        "# Suppress yt-dlp warnings\n",
+        "yt_dpl_logger = logging.getLogger('yt_dlp')\n",
+        "yt_dpl_logger.setLevel(logging.ERROR)"
+      ],
+      "metadata": {
+        "id": "5fCEDCU_qrC0"
+      },
+      "id": "5fCEDCU_qrC0",
+      "execution_count": 3,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "import os\n",
+        "os.environ['OPENROUTER_API_KEY'] = userdata.get('API')\n",
+        "model = ChatOpenRouter(model = userdata.get(\"model\"))\n"
+      ],
+      "metadata": {
+        "id": "GJBs_flRovLc"
+      },
+      "id": "GJBs_flRovLc",
+      "execution_count": 4,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "execution_count": 5,
+      "id": "gJr_9dXGpJ05",
+      "metadata": {
+        "id": "gJr_9dXGpJ05"
+      },
+      "outputs": [],
+      "source": [
+        "@tool\n",
+        "def extract_video_id(url: str) -> str:\n",
+        "    \"\"\"\n",
+        "    Extracts the 11-character YouTube video ID from a URL.\n",
+        "\n",
+        "    Args:\n",
+        "        url (str): A YouTube URL containing a video ID.\n",
+        "\n",
+        "    Returns:\n",
+        "        str: Extracted video ID or error message if parsing fails.\n",
+        "    \"\"\"\n",
+        "\n",
+        "    # Regex pattern to match video IDs\n",
+        "    pattern = r'(?:v=|be/|embed/)([a-zA-Z0-9_-]{11})'\n",
+        "    match = re.search(pattern, url)\n",
+        "    return match.group(1) if match else \"Error: Invalid YouTube URL\""
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "print(extract_video_id.name)\n",
+        "print(\"----------------------------\")\n",
+        "print(extract_video_id.description)\n",
+        "print(\"----------------------------\")\n",
+        "print(extract_video_id.func)"
+      ],
+      "metadata": {
+        "id": "2fhs6GZ4qFMx",
+        "outputId": "f1355148-ebdb-4549-f365-da1562923939",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        }
+      },
+      "id": "2fhs6GZ4qFMx",
+      "execution_count": 6,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "extract_video_id\n",
+            "----------------------------\n",
+            "Extracts the 11-character YouTube video ID from a URL.\n",
+            "\n",
+            "Args:\n",
+            "    url (str): A YouTube URL containing a video ID.\n",
+            "\n",
+            "Returns:\n",
+            "    str: Extracted video ID or error message if parsing fails.\n",
+            "----------------------------\n",
+            "<function extract_video_id at 0x7e12688d2ca0>\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": 7,
+      "id": "-gE-Ez1qtyIA",
+      "metadata": {
+        "outputId": "20971e71-3a53-49f1-bc65-9ac40f0713e9",
+        "id": "-gE-Ez1qtyIA",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 36
+        }
+      },
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "'hfIUstzHs9A'"
+            ],
+            "application/vnd.google.colaboratory.intrinsic+json": {
+              "type": "string"
+            }
+          },
+          "metadata": {},
+          "execution_count": 7
+        }
+      ],
+      "source": [
+        "extract_video_id.run(\"https://www.youtube.com/watch?v=hfIUstzHs9A\")"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "tools = []\n",
+        "tools.append(extract_video_id)"
+      ],
+      "metadata": {
+        "id": "lSrWNr3MuFUS"
+      },
+      "id": "lSrWNr3MuFUS",
+      "execution_count": 8,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "from youtube_transcript_api import YouTubeTranscriptApi\n",
+        "\n",
+        "\n",
+        "@tool\n",
+        "def fetch_transcript(video_id: str, language: str = \"en\") -> str:\n",
+        "    \"\"\"\n",
+        "    Fetches the transcript of a YouTube video.\n",
+        "\n",
+        "    Args:\n",
+        "        video_id (str): The YouTube video ID (e.g., \"dQw4w9WgXcQ\").\n",
+        "        language (str): Language code for the transcript (e.g., \"en\", \"es\").\n",
+        "\n",
+        "    Returns:\n",
+        "        str: The transcript text or an error message.\n",
+        "    \"\"\"\n",
+        "\n",
+        "    try:\n",
+        "        ytt_api = YouTubeTranscriptApi()\n",
+        "        transcript = ytt_api.fetch(video_id, languages=[language])\n",
+        "        return \" \".join([snippet.text for snippet in transcript.snippets])\n",
+        "    except Exception as e:\n",
+        "        return f\"Error: {str(e)}\""
+      ],
+      "metadata": {
+        "id": "1edGr7JPAZyr"
+      },
+      "id": "1edGr7JPAZyr",
+      "execution_count": 9,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "fetch_transcript.run(\"hfIUstzHs9A\")"
+      ],
+      "metadata": {
+        "id": "-sdyeRMXPvU_",
+        "outputId": "7c3eb978-0822-4213-d6c1-81da62d0d281",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 163
+        }
+      },
+      "id": "-sdyeRMXPvU_",
+      "execution_count": 10,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "'Over the past couple of months, large language models, or LLMs, such as chatGPT, have taken the world by storm. Whether it\\'s writing poetry or helping plan your upcoming vacation, we are seeing a step change in the performance of AI and its potential to drive enterprise value. My name is Kate Soule. I\\'m a senior manager of business strategy at IBM Research, and today I\\'m going to give a brief overview of this new field of AI that\\'s emerging and how it can be used in a business setting to drive value. Now, large language models are actually a part of a different class of models called foundation models. Now, the term \"foundation models\" was actually first coined by a team from Stanford when they saw that the field of AI was converging to a new paradigm. Where before AI applications were being built by training, maybe a library of different AI models, where each AI model was trained on very task-specific data to perform very specific task. They predicted that we were going to start moving to a new paradigm, where we would have a foundational capability, or a foundation model, that would drive all of these same use cases and applications. So the same exact applications that we were envisioning before with conventional AI, and the same model could drive any number of additional applications. The point is that this model could be transferred to any number of tasks. What gives this model the super power to be able to transfer to multiple different tasks and perform multiple different functions is that it\\'s been trained on a huge amount, in an unsupervised manner, on unstructured data. And what that means, in the language domain, is basically I\\'ll feed a bunch of sentences-- and I\\'m talking terabytes of data here --to train this model. And the start of my sentence might be \"no use crying over spilled\" and the end of my sentence might be \"milk\". And I\\'m trying to get my model to predict the last word of the sentence based off of the words that it saw before. And it\\'s this generative capability of the model-- predicting and generating the next word --based off of previous words that it\\'s seen beforehand, that is why that foundation models are actually a part of the field of AI called generative AI because we\\'re generating something new in this case, the next word in a sentence. And even though these models are trained to perform, at its core, a generation past, predicting the next word in the sentence, we actually can take these models, and if you introduce a small amount of labeled data to the equation, you can tune them to perform traditional NLP tasks-- things like classification, or named-entity recognition --things that you don\\'t normally associate as being a generative-based model or capability. And this process is called tuning. Where you can tune your foundation model by introducing a small amount of data, you update the parameters of your model and now perform a very specific natural language task. If you don\\'t have data, or have only very few data points, you can still take these foundation models and they actually work very well in low-labeled data domains. And in a process called prompting or prompt engineering, you can apply these models for some of those same exact tasks. So an example of prompting a model to perform a classification task might be you could give a model a sentence and then ask it a question: Does this sentence have a positive sentiment or negative sentiment? The model\\'s going to try and finish generating words in that sentence, and the next natural word in that sentence would be the answer to your classification problem, which would respond either positive or negative, depending on where it estimated the sentiment of the sentence would be. And these models work surprisingly well when applied to these new settings and domains. Now, this is a lot of where the advantages of foundation models come into play. So if we talk about the advantages, the chief advantage is the performance. These models have seen so much data. Again, data with a capital D-- terabytes of data --that by the time that they\\'re applied to small tasks, they can drastically outperform a model that was only trained on just a few data points. The second advantage of these models are the productivity gains. So just like I said earlier, through prompting or tuning, you need far less label data to get to task-specific model than if you had to start from scratch because your model is taking advantage of all the unlabeled data that it saw in its pre-training when we created this generative task. With these advantages, there are also some disadvantages that are important to keep in mind. And the first of those is the compute cost. So that penalty for having this model see so much data is that they\\'re very expensive to train, making it difficult for smaller enterprises to train a foundation model on their own. They\\'re also expensive-- by the time they get to a huge size, a couple billion parameters --they\\'re also very expensive to run inference. You might require multiple GPUs at a time just to host these models and run inference, making them a more costly method than traditional approaches. The second disadvantage of these models is on the trustworthiness side. So just like data is a huge advantage for these models, they\\'ve seen so much unstructured data, it also comes at a cost, especially in the domain like language. A lot of these models are trained basically off of language data that\\'s been scraped from the Internet. And there\\'s so much data that these models have been trained on. Even if you had a whole team of human annotators, you wouldn\\'t be able to go through and actually vet every single data point to make sure that it wasn\\'t biased and didn\\'t contain hate speech or other toxic information. And that\\'s just assuming you actually know what the data is. Often we don\\'t even know-- for a lot of these open source models that have been posted --what the exact datasets are that these models have been trained on leading to trustworthiness issues. So IBM recognizes the huge potential of these technologies. But my partners in IBM Research are working on multiple different innovations to try and improve also the efficiency of these models and the trustworthiness and reliability of these models to make them more relevant in a business setting. All of these examples that I\\'ve talked through so far have just been on the language side. But the reality is, there are a lot of other domains that foundation models can be applied towards. Famously, we\\'ve seen foundation models for vision --looking at models such as DALL-E 2, which takes text data, and that\\'s then used to generate a custom image. We\\'ve seen models for code with products like Copilot that can help complete code as it\\'s being authored. And IBM\\'s innovating across all of these domains. So whether it\\'s language models that we\\'re building into products like Watson Assistant and Watson Discovery, vision models that we\\'re building into products like Maximo Visual Inspection, or Ansible code models that we\\'re building with our partners at Red Hat under Project Wisdom. We\\'re innovating across all of these domains and more. We\\'re working on chemistry. So, for example, we just published and released molformer, which is a foundation model to promote molecule discovery or different targeted therapeutics. And we\\'re working on models for climate change, building Earth Science Foundation models using geospatial data to improve climate research. I hope you found this video both informative and helpful. If you\\'re interested in learning more, particularly how IBM is working to improve some of these disadvantages, making foundation models more trustworthy and more efficient, please take a look at the links below. Thank you.'"
+            ],
+            "application/vnd.google.colaboratory.intrinsic+json": {
+              "type": "string"
+            }
+          },
+          "metadata": {},
+          "execution_count": 10
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "from pytube import Search\n",
+        "from langchain.tools import tool\n",
+        "from typing import List, Dict\n",
+        "\n",
+        "@tool\n",
+        "def search_youtube(query: str) -> List[Dict[str, str]]:\n",
+        "    \"\"\"\n",
+        "    Search YouTube for videos matching the query.\n",
+        "\n",
+        "    Args:\n",
+        "        query (str): The search term to look for on YouTube\n",
+        "\n",
+        "    Returns:\n",
+        "        List of dictionaries containing video titles and IDs in format:\n",
+        "        [{'title': 'Video Title', 'video_id': 'abc123'}, ...]\n",
+        "        Returns error message if search fails\n",
+        "    \"\"\"\n",
+        "    try:\n",
+        "        s = Search(query)\n",
+        "        return [\n",
+        "            {\n",
+        "                \"title\": yt.title,\n",
+        "                \"video_id\": yt.video_id,\n",
+        "                \"url\": f\"https://youtu.be/{yt.video_id}\"\n",
+        "            }\n",
+        "            for yt in s.results\n",
+        "        ]\n",
+        "    except Exception as e:\n",
+        "        return f\"Error: {str(e)}\""
+      ],
+      "metadata": {
+        "id": "Nma_JWh-W-IF"
+      },
+      "id": "Nma_JWh-W-IF",
+      "execution_count": 11,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "search_out = search_youtube.run(\"Generative AI\")\n",
+        "display(JSON(search_out))"
+      ],
+      "metadata": {
+        "id": "UdRyKR44dcNI"
+      },
+      "id": "UdRyKR44dcNI",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "tools.append(search_youtube)"
+      ],
+      "metadata": {
+        "id": "4_kCnsPUqS6o"
+      },
+      "id": "4_kCnsPUqS6o",
+      "execution_count": 13,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "execution_count": 14,
+      "id": "C4HZx7Gndbrh",
+      "metadata": {
+        "id": "C4HZx7Gndbrh"
+      },
+      "outputs": [],
+      "source": [
+        "@tool\n",
+        "def get_full_metadata(url: str) -> dict:\n",
+        "    \"\"\"Extract metadata given a YouTube URL, including title, views, duration, channel, likes, comments, and chapters.\"\"\"\n",
+        "    with yt_dlp.YoutubeDL({'quiet': True, 'logger': yt_dpl_logger}) as ydl:\n",
+        "        info = ydl.extract_info(url, download=False)\n",
+        "        return {\n",
+        "            'title': info.get('title'),\n",
+        "            'views': info.get('view_count'),\n",
+        "            'duration': info.get('duration'),\n",
+        "            'channel': info.get('uploader'),\n",
+        "            'likes': info.get('like_count'),\n",
+        "            'comments': info.get('comment_count'),\n",
+        "            'chapters': info.get('chapters', [])\n",
+        "        }"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "meta_data = get_full_metadata.run(\"https://www.youtube.com/watch?v=T-D1OfcDW1M\")\n",
+        "display(JSON(meta_data))"
+      ],
+      "metadata": {
+        "id": "VYV91hbKwP2J"
+      },
+      "id": "VYV91hbKwP2J",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "tools.append(get_full_metadata)"
+      ],
+      "metadata": {
+        "id": "vwnNlNIEwoZ8"
+      },
+      "id": "vwnNlNIEwoZ8",
+      "execution_count": 16,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "@tool\n",
+        "def get_thumbnails(url: str) -> List[Dict]:\n",
+        "    \"\"\"\n",
+        "    Get available thumbnails for a YouTube video using its URL.\n",
+        "\n",
+        "    Args:\n",
+        "        url (str): YouTube video URL (any format)\n",
+        "\n",
+        "    Returns:\n",
+        "        List of dictionaries with thumbnail URLs and resolutions in YouTube's native order\n",
+        "    \"\"\"\n",
+        "\n",
+        "    try:\n",
+        "        with yt_dlp.YoutubeDL({'quiet': True, 'logger': yt_dpl_logger}) as ydl:\n",
+        "            info = ydl.extract_info(url, download=False)\n",
+        "\n",
+        "            thumbnails = []\n",
+        "            for t in info.get('thumbnails', []):\n",
+        "                if 'url' in t:\n",
+        "                    thumbnails.append({\n",
+        "                        \"url\": t['url'],\n",
+        "                        \"width\": t.get('width'),\n",
+        "                        \"height\": t.get('height'),\n",
+        "                        \"resolution\": f\"{t.get('width', '')}x{t.get('height', '')}\".strip('x')\n",
+        "                    })\n",
+        "\n",
+        "            return thumbnails\n",
+        "\n",
+        "    except Exception as e:\n",
+        "        return [{\"error\": f\"Failed to get thumbnails: {str(e)}\"}]"
+      ],
+      "metadata": {
+        "id": "OwuxHmxllTwN"
+      },
+      "id": "OwuxHmxllTwN",
+      "execution_count": 17,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "thumbnails=get_thumbnails.run(\"https://www.youtube.com/watch?v=qWHaMrR5WHQ\")\n",
+        "\n",
+        "display(JSON(thumbnails))"
+      ],
+      "metadata": {
+        "id": "ufxBm1yRnruN"
+      },
+      "id": "ufxBm1yRnruN",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "llm_with_tools = model.bind_tools(tools)"
+      ],
+      "metadata": {
+        "id": "-Rh3-Vt9Nev9"
+      },
+      "id": "-Rh3-Vt9Nev9",
+      "execution_count": 19,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "\n",
+        "for tool in tools:\n",
+        "  schema = {\n",
+        "    \"name\": tool.name,\n",
+        "    \"description\": tool.description,\n",
+        "    \"parameters\": tool.args_schema.schema() if tool.args_schema else {},\n",
+        "    \"return\": tool.return_type if hasattr(tool, \"return_type\") else None\n",
+        "  }\n",
+        "\n",
+        "  display(JSON(schema))\n",
+        ""
+      ],
+      "metadata": {
+        "id": "P-H6Lw1vyNNd"
+      },
+      "id": "P-H6Lw1vyNNd",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "query = \"I want to summarize youtube video: https://www.youtube.com/watch?v=T-D1OfcDW1M in english\"\n",
+        "print(query)"
+      ],
+      "metadata": {
+        "id": "uvm3emPaRbpC",
+        "outputId": "0c739fd4-eef2-4e3f-aee6-a3b2e73464ed",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        }
+      },
+      "id": "uvm3emPaRbpC",
+      "execution_count": 21,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "I want to summarize youtube video: https://www.youtube.com/watch?v=T-D1OfcDW1M in english\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "messages = [HumanMessage(content = query)]\n",
+        "print(messages)"
+      ],
+      "metadata": {
+        "id": "B6S4ImIMRddh",
+        "outputId": "15eea471-da0f-4448-ecbc-ff4e796341c1",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        }
+      },
+      "id": "B6S4ImIMRddh",
+      "execution_count": 22,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "[HumanMessage(content='I want to summarize youtube video: https://www.youtube.com/watch?v=T-D1OfcDW1M in english', additional_kwargs={}, response_metadata={})]\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "response_1 = llm_with_tools.invoke(messages)\n",
+        "response_1"
+      ],
+      "metadata": {
+        "id": "TuYQ7y4nRfo0",
+        "outputId": "faec9376-dda4-40e5-c4f0-8be816345931",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        }
+      },
+      "id": "TuYQ7y4nRfo0",
+      "execution_count": 23,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "AIMessage(content='', additional_kwargs={'reasoning_content': \"The user wants to summarize a YouTube video in English. The URL is provided: https://www.youtube.com/watch?v=T-D1OfcDW1M. I need to extract metadata or get the video details to summarize. I can use the get_full_metadata tool with the URL. Let's do that.\", 'reasoning_details': [{'type': 'reasoning.text', 'format': 'unknown', 'index': 0, 'text': \"The user wants to summarize a YouTube video in English. The URL is provided: https://www.youtube.com/watch?v=T-D1OfcDW1M. I need to extract metadata or get the video details to summarize. I can use the get_full_metadata tool with the URL. Let's do that.\"}]}, response_metadata={'model_name': 'nvidia/nemotron-3-ultra-550b-a55b:free', 'id': 'gen-1794463061-4z9C8C8LjKpjec8f37uH', 'created': 1794463061, 'object': 'chat.completion', 'finish_reason': 'tool_calls', 'logprobs': None, 'model_provider': 'openrouter', 'cost': 0.0, 'cost_details': {'upstream_inference_completions_cost': 0.0, 'upstream_inference_prompt_cost': 0.0, 'upstream_inference_cost': 0.0}}, id='lc_run--01a1ce55-5321-774d-b4d2-131de13f5558-0', tool_calls=[{'name': 'get_full_metadata', 'args': {'url': 'https://www.youtube.com/watch?v=T-D1OfcDW1M'}, 'id': 'call-ea0eeed5-8ba9-47a4-b0cf-dc20a748e00c', 'type': 'tool_call'}], invalid_tool_calls=[], usage_metadata={'input_tokens': 536, 'output_tokens': 105, 'total_tokens': 641, 'input_token_details': {'cache_read': 0, 'cache_creation': 0}, 'output_token_details': {'reasoning': 64}})"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 23
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "messages.append(response_1)"
+      ],
+      "metadata": {
+        "id": "yK8jNV6QRh-q"
+      },
+      "id": "yK8jNV6QRh-q",
+      "execution_count": 24,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "tool_mapping = {\n",
+        "    \"get_thumbnails\" : get_thumbnails,\n",
+        "    \"extract_video_id\": extract_video_id,\n",
+        "    \"fetch_transcript\": fetch_transcript,\n",
+        "    \"search_youtube\": search_youtube,\n",
+        "    \"get_full_metadata\": get_full_metadata\n",
+        "}"
+      ],
+      "metadata": {
+        "id": "ZbczDLNRRkD6"
+      },
+      "id": "ZbczDLNRRkD6",
+      "execution_count": 25,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "tool_calls_1 = response_1.tool_calls\n",
+        "display(JSON(tool_calls_1))\n",
+        "tool_name=tool_calls_1[0]['name']\n",
+        "print(tool_name)\n",
+        "tool_call_id =tool_calls_1[0]['id']\n",
+        "print(tool_call_id)\n",
+        "args=tool_calls_1[0]['args']\n",
+        "print(args)\n",
+        "my_tool=tool_mapping[tool_calls_1[0]['name']]"
+      ],
+      "metadata": {
+        "id": "3M7Jhq1SRmCh",
+        "outputId": "7857240c-ceb1-4a9b-bbb9-4fa719e4f22f",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 254
+        }
+      },
+      "id": "3M7Jhq1SRmCh",
+      "execution_count": 59,
+      "outputs": [
+        {
+          "output_type": "display_data",
+          "data": {
+            "text/plain": [
+              "<IPython.core.display.JSON object>"
+            ],
+            "application/json": [
+              {
+                "name": "get_full_metadata",
+                "args": {
+                  "url": "https://www.youtube.com/watch?v=T-D1OfcDW1M"
+                },
+                "id": "call-ea0eeed5-8ba9-47a4-b0cf-dc20a748e00c",
+                "type": "tool_call"
+              }
+            ]
+          },
+          "metadata": {
+            "application/json": {
+              "expanded": false,
+              "root": "root"
+            }
+          }
+        },
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "get_full_metadata\n",
+            "call-ea0eeed5-8ba9-47a4-b0cf-dc20a748e00c\n",
+            "{'url': 'https://www.youtube.com/watch?v=T-D1OfcDW1M'}\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "video_id = my_tool.invoke(tool_calls_1[0]['args'])\n",
+        "print(\"Video id :\", video_id)\n",
+        "messages.append(ToolMessage(content = video_id, tool_call_id = tool_calls_1[0]['id']))"
+      ],
+      "metadata": {
+        "id": "6rBrUCm6Rzx5",
+        "outputId": "6989fb3f-db46-49ae-c702-0f6f4dc28e08",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        }
+      },
+      "id": "6rBrUCm6Rzx5",
+      "execution_count": 27,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Video id : {'title': 'What is Retrieval-Augmented Generation (RAG)?', 'views': 2104867, 'duration': 395, 'channel': 'IBM Technology', 'likes': 46485, 'comments': 1000, 'chapters': [{'start_time': 0, 'title': 'Introduction', 'end_time': 18}, {'start_time': 18, 'title': 'What is RAG', 'end_time': 42}, {'start_time': 42, 'title': 'An anecdote', 'end_time': 82}, {'start_time': 82, 'title': 'Two problems', 'end_time': 138}, {'start_time': 138, 'title': 'Large language models', 'end_time': 263}, {'start_time': 263, 'title': 'How does RAG help', 'end_time': 395}]}\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "response_2 = llm_with_tools.invoke(messages)\n",
+        "response_2\n",
+        "messages.append(response_2)\n",
+        "tool_calls_2 = response_2.tool_calls\n",
+        "print(tool_calls_2)"
+      ],
+      "metadata": {
+        "id": "um20xEw8R5IY",
+        "outputId": "f2e81832-62aa-4cd3-ced4-d5a9acaaecd1",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        }
+      },
+      "id": "um20xEw8R5IY",
+      "execution_count": 28,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "[]\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "fetch_transcript_tool_output = tool_mapping[tool_calls_2[0]['name']].invoke(tool_calls_2[0]['args'])\n",
+        "print(fetch_transcript_tool_output)\n",
+        "messages.append(ToolMessage(content = fetch_transcript_tool_output, tool_call_id = tool_calls_2[0]['id']))\n",
+        "summary = llm_with_tools.invoke(messages)\n",
+        "print(\"Summary : \", summary)\n"
+      ],
+      "metadata": {
+        "id": "QOxvg2NvSEHr"
+      },
+      "id": "QOxvg2NvSEHr",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Define the processing steps\n",
+        "def execute_tool(tool_call):\n",
+        "    \"\"\"Execute single tool call and return ToolMessage\"\"\"\n",
+        "    try:\n",
+        "        result = tool_mapping[tool_call[\"name\"]].invoke(tool_call[\"args\"])\n",
+        "        return ToolMessage(\n",
+        "            content=str(result),\n",
+        "            tool_call_id=tool_call[\"id\"]\n",
+        "        )\n",
+        "    except Exception as e:\n",
+        "        return ToolMessage(\n",
+        "            content=f\"Error: {str(e)}\",\n",
+        "            tool_call_id=tool_call[\"id\"]\n",
+        "        )"
+      ],
+      "metadata": {
+        "id": "CVH5OTQGSu-q"
+      },
+      "id": "CVH5OTQGSu-q",
+      "execution_count": 30,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "from langchain_core.runnables import RunnablePassthrough, RunnableLambda\n",
+        "\n",
+        "summarization_chain = (\n",
+        "    # Start with initial query\n",
+        "    RunnablePassthrough.assign(\n",
+        "        messages=lambda x: [HumanMessage(content=x[\"query\"])]\n",
+        "    )\n",
+        "    # First LLM call (extract video ID)\n",
+        "    | RunnablePassthrough.assign(\n",
+        "        ai_response=lambda x: llm_with_tools.invoke(x[\"messages\"])\n",
+        "    )\n",
+        "    # Process first tool call\n",
+        "    | RunnablePassthrough.assign(\n",
+        "        tool_messages=lambda x: [\n",
+        "            execute_tool(tc) for tc in x[\"ai_response\"].tool_calls\n",
+        "        ]\n",
+        "    )\n",
+        "    # Update message history\n",
+        "    | RunnablePassthrough.assign(\n",
+        "        messages=lambda x: x[\"messages\"] + [x[\"ai_response\"]] + x[\"tool_messages\"]\n",
+        "    )\n",
+        "    # Second LLM call (fetch transcript)\n",
+        "    | RunnablePassthrough.assign(\n",
+        "        ai_response2=lambda x: llm_with_tools.invoke(x[\"messages\"])\n",
+        "    )\n",
+        "    # Process second tool call\n",
+        "    | RunnablePassthrough.assign(\n",
+        "        tool_messages2=lambda x: [\n",
+        "            execute_tool(tc) for tc in x[\"ai_response2\"].tool_calls\n",
+        "        ]\n",
+        "    )\n",
+        "    # Final message update\n",
+        "    | RunnablePassthrough.assign(\n",
+        "        messages=lambda x: x[\"messages\"] + [x[\"ai_response2\"]] + x[\"tool_messages2\"]\n",
+        "    )\n",
+        "    # Generate final summary\n",
+        "    | RunnablePassthrough.assign(\n",
+        "        summary=lambda x: llm_with_tools.invoke(x[\"messages\"]).content\n",
+        "    )\n",
+        "    # Return just the summary text\n",
+        "    | RunnableLambda(lambda x: x[\"summary\"])\n",
+        ")\n"
+      ],
+      "metadata": {
+        "id": "cBdikJn-SyA4"
+      },
+      "id": "cBdikJn-SyA4",
+      "execution_count": 31,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Usage\n",
+        "result = summarization_chain.invoke({\n",
+        "    \"query\": \"Summarize this YouTube video: https://www.youtube.com/watch?v=1bUy-1hGZpI\"\n",
+        "})\n",
+        "\n",
+        "print(\"Video Summary:\\n\", result)\n",
+        "\n",
+        "initial_setup = RunnablePassthrough.assign(\n",
+        "    messages=lambda x: [HumanMessage(content=x[\"query\"])]\n",
+        ")\n",
+        "\n",
+        "first_llm_call = RunnablePassthrough.assign(\n",
+        "    ai_response=lambda x: llm_with_tools.invoke(x[\"messages\"])\n",
+        ")\n",
+        "\n",
+        "first_tool_processing = RunnablePassthrough.assign(\n",
+        "    tool_messages=lambda x: [\n",
+        "        execute_tool(tc) for tc in x[\"ai_response\"].tool_calls\n",
+        "    ]\n",
+        ").assign(\n",
+        "    messages=lambda x: x[\"messages\"] + [x[\"ai_response\"]] + x[\"tool_messages\"]\n",
+        ")"
+      ],
+      "metadata": {
+        "id": "j52fESrdS5oL",
+        "outputId": "4e755265-7701-4a1f-dbf1-d5bdaa5ce716",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        }
+      },
+      "id": "j52fESrdS5oL",
+      "execution_count": 32,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Video Summary:\n",
+            " **In short:** This video is a concise, well‑organized primer on LangChain—ideal for developers who want to quickly grasp how to structure, extend, and deploy LLM‑powered applications using the framework.\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "second_llm_call = RunnablePassthrough.assign(\n",
+        "    ai_response2=lambda x: llm_with_tools.invoke(x[\"messages\"])\n",
+        ")"
+      ],
+      "metadata": {
+        "id": "FsdbxEYeTGL9"
+      },
+      "id": "FsdbxEYeTGL9",
+      "execution_count": 33,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "second_tool_processing = RunnablePassthrough.assign(\n",
+        "    tool_messages2=lambda x: [\n",
+        "        execute_tool(tc) for tc in x[\"ai_response2\"].tool_calls\n",
+        "    ]\n",
+        ").assign(\n",
+        "    messages=lambda x: x[\"messages\"] + [x[\"ai_response2\"]] + x[\"tool_messages2\"]\n",
+        ")"
+      ],
+      "metadata": {
+        "id": "WmcH1uc5TKYC"
+      },
+      "id": "WmcH1uc5TKYC",
+      "execution_count": 34,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "final_summary = RunnablePassthrough.assign(\n",
+        "    summary=lambda x: llm_with_tools.invoke(x[\"messages\"]).content\n",
+        ") | RunnableLambda(lambda x: x[\"summary\"])"
+      ],
+      "metadata": {
+        "id": "oAJ-131kTPZB"
+      },
+      "id": "oAJ-131kTPZB",
+      "execution_count": 35,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "chain = (\n",
+        "    initial_setup\n",
+        "    | first_llm_call\n",
+        "    | first_tool_processing\n",
+        "    | second_llm_call\n",
+        "    | second_tool_processing\n",
+        "    | final_summary\n",
+        ")"
+      ],
+      "metadata": {
+        "id": "KMTKhlo3TS6i"
+      },
+      "id": "KMTKhlo3TS6i",
+      "execution_count": 36,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "query = {\"query\": \"I want to summarize youtube video: https://www.youtube.com/watch?v=T-D1OfcDW1M in english\"}\n",
+        "result = chain.invoke(query)\n",
+        "print(\"Video Summary:\\n\", result)"
+      ],
+      "metadata": {
+        "id": "ROw_-pNJTVOx",
+        "outputId": "69e95e1c-89d4-40e1-e36b-b177a71fc827",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        }
+      },
+      "id": "ROw_-pNJTVOx",
+      "execution_count": 37,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Video Summary:\n",
+            " The video **\"What is Retrieval-Augmented Generation (RAG)?\"** by IBM Technology provides a clear, 6.5-minute introduction to RAG. Here's a concise summary:\n",
+            "\n",
+            "## **Core Concept**\n",
+            "RAG (Retrieval-Augmented Generation) is a framework that enhances Large Language Models (LLMs) by connecting them to external knowledge sources. Instead of relying solely on the model's training data, RAG retrieves relevant documents first, then feeds them to the LLM to generate grounded, accurate answers.\n",
+            "\n",
+            "## **Key Points Covered**\n",
+            "\n",
+            "| Section | Key Insights |\n",
+            "|---------|-------------|\n",
+            "| **Introduction** | LLMs have limitations: knowledge cutoffs and hallucinations (confidently inventing false info) |\n",
+            "| **What is RAG** | Combines a **retriever** (finds relevant docs) + **generator** (LLM synthesizes answer) |\n",
+            "| **Anecdote** | Like an open-book exam: the model \"looks up\" facts before answering |\n",
+            "| **Two Problems Solved** | 1. **Stale knowledge** (training cutoff) 2. **Hallucinations** (fabricated answers) |\n",
+            "| **LLM Limitations** | Models only know what's in their parametric memory; can't access external data natively |\n",
+            "| **How RAG Helps** | • Retrieves current/proprietary data • Provides source citations • Reduces hallucinations • Enables domain-specific expertise |\n",
+            "\n",
+            "## **Why It Matters**\n",
+            "- **Accuracy**: Answers grounded in verified documents\n",
+            "- **Currency**: Incorporates real-time or private data\n",
+            "- **Transparency**: Sources can be cited for verification\n",
+            "- **Flexibility**: Works with any LLM and custom knowledge bases (PDFs, databases, APIs)\n",
+            "\n",
+            "## **Bottom Line**\n",
+            "RAG bridges the gap between an LLM's static training knowledge and the need for **factual, current, and domain-specific responses**—making it foundational for trustworthy AI applications like enterprise search, chatbots, and QA systems.\n",
+            "\n",
+            "*The video uses a clear chapter structure (shown in the metadata) that walks through the problem, solution, and practical implementation of RAG.*\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "query = {\"query\": \"Get top 3 youtube videos in India and their metadata\"}\n",
+        "try:\n",
+        "    result = chain.invoke(query)\n",
+        "    print(\"Video Summary:\\n\", result)\n",
+        "except Exception as e:\n",
+        "    print(\"Non-critical network error:\", e)"
+      ],
+      "metadata": {
+        "id": "ez5FoQdzTXKR",
+        "outputId": "d76ecb94-e0e9-4348-899a-0a165e4746db",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        }
+      },
+      "id": "ez5FoQdzTXKR",
+      "execution_count": 38,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Video Summary:\n",
+            " \n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "from langchain_core.runnables import RunnableBranch, RunnableLambda\n",
+        "from langchain_core.messages import HumanMessage, ToolMessage\n",
+        "import json\n",
+        "\n",
+        "def execute_tool(tool_call):\n",
+        "    \"\"\"Execute single tool call and return ToolMessage\"\"\"\n",
+        "    try:\n",
+        "        result = tool_mapping[tool_call[\"name\"]].invoke(tool_call[\"args\"])\n",
+        "        content = json.dumps(result) if isinstance(result, (dict, list)) else str(result)\n",
+        "    except Exception as e:\n",
+        "        content = f\"Error: {str(e)}\"\n",
+        "\n",
+        "    return ToolMessage(\n",
+        "        content=content,\n",
+        "        tool_call_id=tool_call[\"id\"]\n",
+        "    )"
+      ],
+      "metadata": {
+        "id": "xfqT52AdTZja"
+      },
+      "id": "xfqT52AdTZja",
+      "execution_count": 39,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "def process_tool_calls(messages):\n",
+        "    \"\"\"Recursive tool call processor\"\"\"\n",
+        "    last_message = messages[-1]\n",
+        "\n",
+        "    # Execute all tool calls in parallel\n",
+        "    tool_messages = [\n",
+        "        execute_tool(tc)\n",
+        "        for tc in getattr(last_message, 'tool_calls', [])\n",
+        "    ]\n",
+        "\n",
+        "    # Add tool responses to message history\n",
+        "    updated_messages = messages + tool_messages\n",
+        "\n",
+        "    # Get next LLM response\n",
+        "    next_ai_response = llm_with_tools.invoke(updated_messages)\n",
+        "\n",
+        "    return updated_messages + [next_ai_response]"
+      ],
+      "metadata": {
+        "id": "fKd8rv_hTcDa"
+      },
+      "id": "fKd8rv_hTcDa",
+      "execution_count": 40,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "def should_continue(messages):\n",
+        "    \"\"\"Check if you need another iteration\"\"\"\n",
+        "    last_message = messages[-1]\n",
+        "    return bool(getattr(last_message, 'tool_calls', None))"
+      ],
+      "metadata": {
+        "id": "u3YQEfwLTe3o"
+      },
+      "id": "u3YQEfwLTe3o",
+      "execution_count": 41,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "def _recursive_chain(messages):\n",
+        "    \"\"\"Recursively process tool calls until completion\"\"\"\n",
+        "    if should_continue(messages):\n",
+        "        new_messages = process_tool_calls(messages)\n",
+        "        return _recursive_chain(new_messages)\n",
+        "    return messages\n",
+        "\n",
+        "recursive_chain = RunnableLambda(_recursive_chain)"
+      ],
+      "metadata": {
+        "id": "BS35aXTLTirx"
+      },
+      "id": "BS35aXTLTirx",
+      "execution_count": 42,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "universal_chain = (\n",
+        "    RunnableLambda(lambda x: [HumanMessage(content=x[\"query\"])])\n",
+        "    | RunnableLambda(lambda messages: messages + [llm_with_tools.invoke(messages)])\n",
+        "    | recursive_chain\n",
+        ")"
+      ],
+      "metadata": {
+        "id": "vkOYVA1PTlsa"
+      },
+      "id": "vkOYVA1PTlsa",
+      "execution_count": 43,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "query_us = {\"query\": \"Show top 3 US trending videos with metadata and thumbnails\"}\n",
+        "\n",
+        "try:\n",
+        "    response = universal_chain.invoke(query_us)\n",
+        "    print(\"\\nUS Trending Videos:\\n\", response[-1])\n",
+        "except Exception as e:\n",
+        "    print(\"Non-critical network error while fetching US trending videos:\", e)"
+      ],
+      "metadata": {
+        "id": "gKAfpvxlTonD",
+        "outputId": "8502eecd-92fc-42d0-f8c9-5faaeb7c544e",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        }
+      },
+      "id": "gKAfpvxlTonD",
+      "execution_count": 44,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stderr",
+          "text": [
+            "ERROR:yt_dlp:ERROR: [youtube] 9Bqwu2aq_C0: This video is not available\n"
+          ]
+        },
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "\n",
+            "US Trending Videos:\n",
+            " content='**Note:** YouTube\\'s official \"Trending\" page is region-specific and algorithmically generated. The tools I have access to can search for videos and retrieve metadata, but cannot directly fetch the official Trending page. Below are the top 3 results from a search for **\"trending videos today US\"**, along with their full metadata and thumbnail links.\\n\\n---\\n\\n### **1. Best TikToks of 2025 So Far 😂 Funniest Viral Videos**\\n- **Video ID:** `pGU1W-F7oD0`\\n- **URL:** https://youtu.be/pGU1W-F7oD0\\n- **Thumbnail:** https://img.youtube.com/vi/pGU1W-F7oD0/maxresdefault.jpg\\n- **Channel:** America\\'s Funniest Home Videos\\n- **Views:** 2,617,015\\n- **Duration:** 20:24 (1,224 seconds)\\n- **Likes:** 14,421\\n- **Comments:** 385\\n- **Chapters:**\\n  - 0:00 – Funny moments and fails\\n  - 2:30 – Surprises and antics\\n  - 4:15 – Weather and cleanup struggles\\n  - 6:12 – Trips and mishaps\\n  - 8:45 – Snacks and household chaos\\n  - 11:09 – Family interactions\\n  - 13:09 – Learning and games\\n  - 15:19 – Pet and kid mischief\\n  - 17:19 – Funny conclusions\\n\\n---\\n\\n### **2. Iran sends DEFIANT message to US: \\'TIME TO SURRENDER\\'**\\n- **Video ID:** `sDl2luzPHYM`\\n- **URL:** https://youtu.be/sDl2luzPHYM\\n- **Thumbnail:** https://img.youtube.com/vi/sDl2luzPHYM/maxresdefault.jpg\\n- **Channel:** Fox News\\n- **Views:** 659,167\\n- **Duration:** 2:06 (126 seconds)\\n- **Likes:** 2,683\\n- **Comments:** 2,100\\n- **Chapters:** *None available*\\n\\n---\\n\\n### **3. HE THOUGHT NO ONE WAS WATCHING 😭 Best Fails of the Week**\\n- **Video ID:** `C2GLnVhwjas`\\n- **URL:** https://youtu.be/C2GLnVhwjas\\n- **Thumbnail:** https://img.youtube.com/vi/C2GLnVhwjas/maxresdefault.jpg\\n- **Channel:** America\\'s Funniest Home Videos\\n- **Views:** 365,061\\n- **Duration:** 17:42 (1,062 seconds)\\n- **Likes:** 1,936\\n- **Comments:** 89\\n- **Chapters:**\\n  - 0:00 – Playful family interactions\\n  - 3:51 – Household mishaps\\n  - 6:47 – Funny candid moments\\n  - 8:01 – Destructive fun and mischief\\n  - 9:31 – Celebrations and discoveries\\n  - 11:58 – Birthday and surprise events\\n  - 13:55 – Chores and lighthearted play\\n  - 15:29 – Final antics and conclusion\\n\\n---\\n\\n### **How to Use the Thumbnails**\\nEach thumbnail URL follows the pattern:  \\n`https://img.youtube.com/vi/{VIDEO_ID}/maxresdefault.jpg`  \\nYou can embed these directly in Markdown/HTML:\\n```markdown\\n![Video Thumbnail](https://img.youtube.com/vi/pGU1W-F7oD0/maxresdefault.jpg)\\n```\\n\\n---\\n\\n**Limitation:** These results come from a YouTube search for “trending videos today US,” not the official Trending page. For the actual, real-time Trending list, you would need to visit [YouTube Trending](https://www.youtube.com/feed/trending) directly.' additional_kwargs={'reasoning_content': 'Now I have metadata for three videos. I can present them as \"top 3 trending videos\" based on search results for \"trending videos today US\". However, these might not be the actual YouTube trending page. I should clarify that these are search results for trending videos, not the official trending page.\\n\\nAlso, I need to provide thumbnails. I can generate thumbnail URLs: For each video_id, the thumbnail URL is `https://img.youtube.com/vi/{video_id}/maxresdefault.jpg` (or hqdefault.jpg). I\\'ll include those.\\n\\nLet\\'s compile the data:\\n\\n1. Video 1: \"Best TikToks of 2025 So Far 😂 Funniest Viral Videos\"\\n   - video_id: pGU1W-F7oD0\\n   - URL: https://youtu.be/pGU1W-F7oD0\\n   - Thumbnail: https://img.youtube.com/vi/pGU1W-F7oD0/maxresdefault.jpg\\n   - Metadata: views: 2,617,015, duration: 1224 seconds (20:24), channel: America\\'s Funniest Home Videos, likes: 14,421, comments: 385, chapters: list.\\n\\n2. Video 2: \"Iran sends DEFIANT message to US: \\'TIME TO SURRENDER\\'\"\\n   - video_id: sDl2luzPHYM\\n   - URL: https://youtu.be/sDl2luzPHYM\\n   - Thumbnail: https://img.youtube.com/vi/sDl2luzPHYM/maxresdefault.jpg\\n   - Metadata: views: 659,167, duration: 126 seconds (2:06), channel: Fox News, likes: 2,683, comments: 2,100, chapters: null.\\n\\n3. Video 3: \"HE THOUGHT NO ONE WAS WATCHING 😭 Best Fails of the Week\"\\n   - video_id: C2GLnVhwjas\\n   - URL: https://youtu.be/C2GLnVhwjas\\n   - Thumbnail: https://img.youtube.com/vi/C2GLnVhwjas/maxresdefault.jpg\\n   - Metadata: views: 365,061, duration: 1062 seconds (17:42), channel: America\\'s Funniest Home Videos, likes: 1,936, comments: 89, chapters: list.\\n\\nNow, I\\'ll format the response with each video\\'s title, thumbnail link, metadata, and maybe a clickable link. I\\'ll also note that these are based on search results for \"trending videos today US\" and may not reflect the official YouTube Trending page.\\n\\nLet\\'s respond.', 'reasoning_details': [{'type': 'reasoning.text', 'format': 'unknown', 'index': 0, 'text': 'Now I have metadata for three videos. I can present them as \"top 3 trending videos\" based on search results for \"trending videos today US\". However, these might not be the actual YouTube trending page. I should clarify that these are search results for trending videos, not the official trending page.\\n\\nAlso, I need to provide thumbnails. I can generate thumbnail URLs: For each video_id, the thumbnail URL is `https://img.youtube.com/vi/{video_id}/maxresdefault.jpg` (or hqdefault.jpg). I\\'ll include those.\\n\\nLet\\'s compile the data:\\n\\n1. Video 1: \"Best TikToks of 2025 So Far 😂 Funniest Viral Videos\"\\n   - video_id: pGU1W-F7oD0\\n   - URL: https://youtu.be/pGU1W-F7oD0\\n   - Thumbnail: https://img.youtube.com/vi/pGU1W-F7oD0/maxresdefault.jpg\\n   - Metadata: views: 2,617,015, duration: 1224 seconds (20:24), channel: America\\'s Funniest Home Videos, likes: 14,421, comments: 385, chapters: list.\\n\\n2. Video 2: \"Iran sends DEFIANT message to US: \\'TIME TO SURRENDER\\'\"\\n   - video_id: sDl2luzPHYM\\n   - URL: https://youtu.be/sDl2luzPHYM\\n   - Thumbnail: https://img.youtube.com/vi/sDl2luzPHYM/maxresdefault.jpg\\n   - Metadata: views: 659,167, duration: 126 seconds (2:06), channel: Fox News, likes: 2,683, comments: 2,100, chapters: null.\\n\\n3. Video 3: \"HE THOUGHT NO ONE WAS WATCHING 😭 Best Fails of the Week\"\\n   - video_id: C2GLnVhwjas\\n   - URL: https://youtu.be/C2GLnVhwjas\\n   - Thumbnail: https://img.youtube.com/vi/C2GLnVhwjas/maxresdefault.jpg\\n   - Metadata: views: 365,061, duration: 1062 seconds (17:42), channel: America\\'s Funniest Home Videos, likes: 1,936, comments: 89, chapters: list.\\n\\nNow, I\\'ll format the response with each video\\'s title, thumbnail link, metadata, and maybe a clickable link. I\\'ll also note that these are based on search results for \"trending videos today US\" and may not reflect the official YouTube Trending page.\\n\\nLet\\'s respond.'}]} response_metadata={'model_name': 'nvidia/nemotron-3-ultra-550b-a55b:free', 'id': 'gen-1794463419-oL3nVMqSTLIezER64F9T', 'created': 1794463419, 'object': 'chat.completion', 'finish_reason': 'stop', 'logprobs': None, 'model_provider': 'openrouter', 'cost': 0.0, 'cost_details': {'upstream_inference_completions_cost': 0.0, 'upstream_inference_prompt_cost': 0.0, 'upstream_inference_cost': 0.0}} id='lc_run--01a1ce5a-cbf6-74f4-81a7-86fcd3060b5c-0' tool_calls=[] invalid_tool_calls=[] usage_metadata={'input_tokens': 3802, 'output_tokens': 1548, 'total_tokens': 5350, 'input_token_details': {'cache_read': 0, 'cache_creation': 0}, 'output_token_details': {'reasoning': 627}}\n"
+          ]
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "colab": {
+      "name": "Welcome To Colab",
+      "provenance": [],
+      "include_colab_link": true
+    },
+    "kernelspec": {
+      "display_name": "Python 3",
+      "name": "python3"
+    }
+  },
+  "nbformat": 4,
+  "nbformat_minor": 5
+}
